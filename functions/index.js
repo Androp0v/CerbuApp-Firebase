@@ -5,10 +5,10 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 admin.initializeApp();
 
-exports.recountCapacities = functions.database.ref('/Capacities/Check-ins/{checkinid}').onWrite(async (change) => {
+exports.recountCapacities = functions.pubsub.schedule('every 2 minutes').onRun(async (context) => {
 	
 	// Grab the current (.after) value of what was written to the Realtime Database.
-	const checkinsRef = change.after.ref.parent;
+	const checkinsRef = admin.database().ref('Capacities/Check-ins/');
 	const countsRef = admin.database().ref('Capacities/Count/');
 	const capacitiesRef = admin.database().ref('Capacities/');
 
@@ -21,7 +21,9 @@ exports.recountCapacities = functions.database.ref('/Capacities/Check-ins/{check
 	const salaDeLecturaTimeout = 6*60*60; //6 horas
 	const bibliotecaTimeout = 6*60*60; //6 horas
 
-	const timeNow = Date.now();
+	// Seconds since UNIX epoch (not miliseconds, hence the /1000)
+	const timeNow = Date.now()/1000;
+	functions.logger.log("Date.now() object:", timeNow); //LOG
 
 	// Save all node updates inside a single dictionary
 	const updates = {};
@@ -30,7 +32,7 @@ exports.recountCapacities = functions.database.ref('/Capacities/Check-ins/{check
 	const checkins = await checkinsRef.once('value');
 
 	checkins.forEach((child) => {
-		if (child.key != "Placeholder"){
+		if (child.key !== "Placeholder"){
 			if (child.child("Room").val() === "Comedor") {
 				if (timeNow - child.child("Time").val() >= comedorTimeout){
 					updates["Check-ins/" + child.key] = null;
