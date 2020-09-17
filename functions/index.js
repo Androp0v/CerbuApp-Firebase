@@ -11,6 +11,7 @@ exports.recountCapacities = functions.database.ref('/Capacities/Check-ins/{check
     const checkinsRef = change.after.ref.parent;
 	const countsRef = admin.database().ref('Capacities/Count/');
 
+	// Define a bunch of variables
 	var comedorCount = 0;
 	var salaDeLecturaCount = 0;
 	var bibliotecaCount = 0;
@@ -19,12 +20,9 @@ exports.recountCapacities = functions.database.ref('/Capacities/Check-ins/{check
 	const salaDeLecturaTimeout = 6*60*60; //6 horas
 	const bibliotecaTimeout = 6*60*60; //6 horas
 
+	// Retrieve all check-ins and classify them
 	const checkins = await checkinsRef.once('value');
 	checkins.forEach((child) => {
-
-      //functions.logger.log("Hello from info. Here's the child.key object:", child.key); //LOG
-      //functions.logger.log("Hello from info. Here's the child.child('Room').val() object:", child.child("Room").val()); //LOG
-
       if (child.child("Room").val() === "Comedor") {
         comedorCount += 1;
       }else if (child.child("Room").val() === "SalaDeLectura"){
@@ -32,22 +30,15 @@ exports.recountCapacities = functions.database.ref('/Capacities/Check-ins/{check
       }else if (child.child("Room").val() === "Biblioteca"){
       	bibliotecaCount += 1;
       }
-
     });
 
-    //functions.logger.log("Hello from info. Here's the comedorCount object:", comedorCount); //LOG
-
-    //functions.logger.log("Hello from info. Here's the checkinsRef object:", checkinsRef); //LOG
-    //functions.logger.log("Hello from info. Here's the countsRef object:", countsRef); //LOG
-
+    // Update child nodes "Count" with freshly counted data
     const counts = await countsRef.once('value');
     const updates = {};
 
     updates["Comedor/Current"] = comedorCount;
     updates["SalaDeLectura/Current"] = salaDeLecturaCount;
     updates["Biblioteca/Current"] = bibliotecaCount;
-
-    //functions.logger.log("Hello from info. Here's the updates object:", updates); //LOG
 
   	return countsRef.update(updates);
 });
