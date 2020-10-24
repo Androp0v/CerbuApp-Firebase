@@ -13,13 +13,15 @@ exports.recountCapacities = functions.pubsub.schedule('every 2 minutes').onRun(a
     const capacitiesRef = admin.database().ref('Capacities/');
 
     // Define a bunch of variables
-    var comedorCount = 0;
+    var salaPolivalenteCount = 0;
     var salaDeLecturaCount = 0;
     var bibliotecaCount = 0;
+    var gimnasioCount = 0;
 
-    const comedorTimeout = 20*60; //20 minutos
+    const salaPolivalenteTimeout = 6*60*60; //6 horas
     const salaDeLecturaTimeout = 6*60*60; //6 horas
     const bibliotecaTimeout = 6*60*60; //6 horas
+    const gimnasioTimeOut = 3*60*60 //3 horas
 
     // Seconds since UNIX epoch (not miliseconds, hence the /1000)
     const timeNow = Date.now()/1000;
@@ -32,23 +34,36 @@ exports.recountCapacities = functions.pubsub.schedule('every 2 minutes').onRun(a
 
     checkins.forEach((child) => {
         if (child.key !== "Placeholder"){
-            if (child.child("Room").val() === "Comedor") {
-                if (timeNow - child.child("Time").val() >= comedorTimeout){
+
+            // Update the check-in time to current time if it's set in the future
+            if (child.child("Time") > timeNow) {
+                updates["Check-ins/" + child.key + "/Time"] = timeNow;
+            }
+
+            // Update the room counts
+            if (child.child("Room").val() === "SalaPolivalente") {
+                if (timeNow - child.child("Time").val() >= salaPolivalenteTimeout){
                     updates["Check-ins/" + child.key] = null;
                 }else{
-                    comedorCount += 1;
+                    salaPolivalenteCount += 1;
                 }
-            } else if (child.child("Room").val() === "SalaDeLectura"){
+            } else if (child.child("Room").val() === "SalaDeLectura") {
                 if (timeNow - child.child("Time").val() >= salaDeLecturaTimeout){
                     updates["Check-ins/" + child.key] = null;
                 }else{
                     salaDeLecturaCount += 1;
                 }
-            } else if (child.child("Room").val() === "Biblioteca"){
+            } else if (child.child("Room").val() === "Biblioteca") {
                 if (timeNow - child.child("Time").val() >= bibliotecaTimeout){
                     updates["Check-ins/" + child.key] = null;
                 }else{
                     bibliotecaCount += 1;
+                }
+            } else if (child.child("Room").val() === "Gimnasio") {
+                if (timeNow - child.child("Time").val() >= gimnasioTimeOut){
+                    updates["Check-ins/" + child.key] = null;
+                }else{
+                    gimnasioCount += 1;
                 }
             }
         }
@@ -57,9 +72,10 @@ exports.recountCapacities = functions.pubsub.schedule('every 2 minutes').onRun(a
     // Update child nodes "Count" with freshly counted data
     const counts = await countsRef.once('value');
     
-    updates["Count/Comedor/Current"] = comedorCount;
+    updates["Count/SalaPolivalente/Current"] = salaPolivalenteCount;
     updates["Count/SalaDeLectura/Current"] = salaDeLecturaCount;
     updates["Count/Biblioteca/Current"] = bibliotecaCount;
+    updates["Count/Gimnasio/Current"] = gimnasioCount;
 
     return capacitiesRef.update(updates);
 });
